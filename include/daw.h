@@ -2,6 +2,7 @@
 #define DAW_H_
 
 #include <stddef.h>
+#include <miniaudio.h>
 
 typedef enum Note Note;
 
@@ -24,6 +25,10 @@ enum Note {
 const char *note_as_str(const Note note);
 
 float hertz_from_note(const Note note, size_t octave);
+
+
+// Miniaudio Helpers
+const char *ma_waveform_type_as_str(const ma_waveform_type t);
 
 #endif // DAW_H_
 
@@ -54,10 +59,21 @@ const char *note_as_str(const Note note) {
 }
 
 float hertz_from_note(const Note note, size_t octave) {
-	// Ensure note + (12 * octave) does not create an invalid calculation
     if (octave < 0 || note < 0 || note >= NOTE_COUNT) {
-        return -1; // Return an error code
+		log_error("Invalid Note!");
+        return -1;
     }
     return 16.35f * powf(2.f, (note + 12 * octave) / 12.f);
+}
+
+
+// Miniaudio Helpers
+const char *ma_waveform_type_as_str(const ma_waveform_type t) {
+	switch (t) {
+		case ma_waveform_type_sine: return "Sine";
+		case ma_waveform_type_square: return "Square";
+		case ma_waveform_type_triangle: return "Triangle";
+		case ma_waveform_type_sawtooth: return "Sawtooth";
+	}
 }
 #endif
