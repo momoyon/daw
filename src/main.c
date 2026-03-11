@@ -37,6 +37,10 @@ int main(void) {
 	init_globals();
 
 	init_window(1280, 720, 1.f, "DAW", &WIDTH, &HEIGHT);
+	SetTargetFPS(60);
+
+	const float console_h = HEIGHT * 0.5f;
+	float console_y = -console_h;
 
 	Note prev_note = C;
 	Userdata ud = {
@@ -78,95 +82,119 @@ int main(void) {
 		begin_frame();
 		ud.play = false;
 
-		ma_waveform_set_frequency(&ud.waveform, hertz_from_note(ud.note, ud.octave));
 
-		if (IsKeyPressed(KEY_DOWN)) {
-			if (ud.octave > 0) ud.octave--;
+		// NOTE: UI
+
+
+		// NOTE: Input
+		if (IsKeyPressed(KEY_F2)) {
+			console_shown = !console_shown;
+		}
+		if (console_shown) {
+			if (input_to_console(&console, "", 0)) {
+				char *line = get_current_console_line_buff(&console);
+				add_line_to_console_simple(&console, line, WHITE, true);
+				clear_current_console_line(&console);
+			}
+		} else {
+			ma_waveform_set_frequency(&ud.waveform, hertz_from_note(ud.note, ud.octave));
+
+			if (IsKeyPressed(KEY_DOWN)) {
+				if (ud.octave > 0) ud.octave--;
+			}
+
+			if (IsKeyPressed(KEY_UP)) {
+				if (ud.octave < 10) ud.octave++;
+			}
+
+			if (IsKeyDown(KEY_EQUAL)) {
+				ud.amplitude += GetFrameTime();
+				ma_waveform_set_amplitude(&ud.waveform, ud.amplitude);
+			}
+
+			if (IsKeyDown(KEY_MINUS)) {
+				ud.amplitude -= GetFrameTime();
+				if (ud.amplitude <= 0.f) ud.amplitude = 0.1f;
+				ma_waveform_set_amplitude(&ud.waveform, ud.amplitude);
+			}
+
+			if (IsKeyPressed(KEY_RIGHT)) {
+				ma_waveform_type t = ud.waveform.config.type;
+				if (t == ma_waveform_type_sawtooth)
+					t = ma_waveform_type_sine;
+				else
+					t++;
+
+				ma_waveform_set_type(&ud.waveform, t);
+			}
+
+			if (IsKeyPressed(KEY_LEFT)) {
+				ma_waveform_type t = ud.waveform.config.type;
+				if (t == ma_waveform_type_sine) 
+					t = ma_waveform_type_sawtooth;
+				else
+					t--;
+
+				ma_waveform_set_type(&ud.waveform, t);
+			}
+
+			if (IsKeyDown(KEY_Z)) {
+				ud.play = true;
+				ud.note = C;
+			}
+			if (IsKeyDown(KEY_S)) {
+				ud.play = true;
+				ud.note = CSHARP;
+			}
+			if (IsKeyDown(KEY_X)) {
+				ud.play = true;
+				ud.note = D;
+			}
+			if (IsKeyDown(KEY_D)) {
+				ud.play = true;
+				ud.note = DSHARP;
+			}
+			if (IsKeyDown(KEY_C)) {
+				ud.play = true;
+				ud.note = E;
+			}
+			if (IsKeyDown(KEY_V)) {
+				ud.play = true;
+				ud.note = F;
+			}
+			if (IsKeyDown(KEY_G)) {
+				ud.play = true;
+				ud.note = FSHARP;
+			}
+			if (IsKeyDown(KEY_B)) {
+				ud.play = true;
+				ud.note = G;
+			}
+			if (IsKeyDown(KEY_H)) {
+				ud.play = true;
+				ud.note = GSHARP;
+			}
+			if (IsKeyDown(KEY_N)) {
+				ud.play = true;
+				ud.note = A;
+			}
+			if (IsKeyDown(KEY_J)) {
+				ud.play = true;
+				ud.note = ASHARP;
+			}
+			if (IsKeyDown(KEY_M)) {
+				ud.play = true;
+				ud.note = B;
+			}
 		}
 
-		if (IsKeyPressed(KEY_UP)) {
-			if (ud.octave < 10) ud.octave++;
+		// NOTE: Update
+		{
+			const float target_y = console_shown ? 0.f : -console_h;
+			console_y += (target_y - console_y) * GetFrameTime() * 10.f;
 		}
 
-		if (IsKeyDown(KEY_EQUAL)) {
-			ud.amplitude += GetFrameTime();
-			ma_waveform_set_amplitude(&ud.waveform, ud.amplitude);
-		}
-
-		if (IsKeyDown(KEY_MINUS)) {
-			ud.amplitude -= GetFrameTime();
-			if (ud.amplitude <= 0.f) ud.amplitude = 0.1f;
-			ma_waveform_set_amplitude(&ud.waveform, ud.amplitude);
-		}
-
-		if (IsKeyPressed(KEY_RIGHT)) {
-			ma_waveform_type t = ud.waveform.config.type;
-			if (t == ma_waveform_type_sawtooth)
-				t = ma_waveform_type_sine;
-			else
-				t++;
-
-			ma_waveform_set_type(&ud.waveform, t);
-		}
-
-		if (IsKeyPressed(KEY_LEFT)) {
-			ma_waveform_type t = ud.waveform.config.type;
-			if (t == ma_waveform_type_sine) 
-				t = ma_waveform_type_sawtooth;
-			else
-				t--;
-
-			ma_waveform_set_type(&ud.waveform, t);
-		}
-
-		if (IsKeyDown(KEY_Z)) {
-			ud.play = true;
-			ud.note = C;
-		}
-		if (IsKeyDown(KEY_S)) {
-			ud.play = true;
-			ud.note = CSHARP;
-		}
-		if (IsKeyDown(KEY_X)) {
-			ud.play = true;
-			ud.note = D;
-		}
-		if (IsKeyDown(KEY_D)) {
-			ud.play = true;
-			ud.note = DSHARP;
-		}
-		if (IsKeyDown(KEY_C)) {
-			ud.play = true;
-			ud.note = E;
-		}
-		if (IsKeyDown(KEY_V)) {
-			ud.play = true;
-			ud.note = F;
-		}
-		if (IsKeyDown(KEY_G)) {
-			ud.play = true;
-			ud.note = FSHARP;
-		}
-		if (IsKeyDown(KEY_B)) {
-			ud.play = true;
-			ud.note = G;
-		}
-		if (IsKeyDown(KEY_H)) {
-			ud.play = true;
-			ud.note = GSHARP;
-		}
-		if (IsKeyDown(KEY_N)) {
-			ud.play = true;
-			ud.note = A;
-		}
-		if (IsKeyDown(KEY_J)) {
-			ud.play = true;
-			ud.note = ASHARP;
-		}
-		if (IsKeyDown(KEY_M)) {
-			ud.play = true;
-			ud.note = B;
-		}
+		// NOTE: Draw
 
 		ClearBackground(BLACK);
 		Rectangle rect = {
@@ -198,10 +226,18 @@ int main(void) {
 			}
 		}
 
+        if (console_y > -console_h) {
+            Rectangle console_rect = {
+                .x = 0,
+                .y = console_y,
+                .width = WIDTH,
+                .height = console_h,
+            };
+			Color col = (Color) {0x12, 0x17, 0x3d, 0xFF};
+            draw_console(&console, console_rect, v2xx(2), col, WHITE, 1.f);
+        }
 
 		end_frame();
-
-
 	}
 
 	ma_waveform_uninit(&ud.waveform);
