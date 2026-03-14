@@ -22,7 +22,6 @@ typedef struct {
 	ma_waveform waveform;
 } Userdata;
 
-
 void data_callback(ma_device* pDevice, void* pOutput, const void* pInput, ma_uint32 frameCount) {
 	(void)pInput;
 	Userdata *ud = ((Userdata*)pDevice->pUserData);
@@ -92,9 +91,49 @@ int main(void) {
 		}
 		if (console_shown) {
 			if (input_to_console(&console, "", 0)) {
+				String_array args = get_current_console_args(&console);
 				char *line = get_current_console_line_buff(&console);
 				add_line_to_console_simple(&console, line, WHITE, true);
+
+
 				clear_current_console_line(&console);
+                if (args.count > 0) {
+                    const char *cmd = args.items[0];
+                    const char *restofargs = get_current_console_line_without_first_word(&console);
+                    Ids matched_ids = match_command(cmd, cmd_names, cmd_names_count);
+
+                    if (matched_ids.count == 0) {
+                        log_error_console(console, "`%s` is not a valid command!", cmd);
+                        clear_current_console_line(&console);
+                    } else if (matched_ids.count == 1) {
+                        Console_cmd console_cmd = cmds.items[matched_ids.items[0]];
+                        size_t cmd_len = strlen(console_cmd.name);
+                        if (cmd_len != strlen(cmd)) {
+                            // Command is not fully typed
+                            ASSERT(console.lines.count > 0, "BRUH");
+                            Console_line *line = get_console_line(&console, 0);
+                            memcpy(line->buff, console_cmd.name, cmd_len);
+                            line->count = cmd_len;
+                        } else {
+                            console_cmd.func(args, restofargs);
+                            clear_current_console_line(&console);
+                        }
+                    } else {
+                        for (int i = 0; i < matched_ids.count; ++i) {
+                            Console_cmd console_cmd = cmds.items[matched_ids.items[i]];
+                            size_t cmd_len = strlen(console_cmd.name);
+                            if (strlen(cmd) == cmd_len) {
+                                // The input matches completely with a defined command; so execute that
+                                console_cmd.func(args, restofargs);
+                                clear_current_console_line(&console);
+                            }
+                            log_info_console(console, "%s - %s", console_cmd.name, console_cmd.desc);
+                        }
+                    }
+
+                    darr_free(matched_ids);
+
+				}
 			}
 		} else {
 			ma_waveform_set_frequency(&ud.waveform, hertz_from_note(ud.note, ud.octave));

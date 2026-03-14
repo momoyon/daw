@@ -479,8 +479,8 @@ typedef struct Console_lines Console_lines;
 
 struct Console_line {
 	char buff[CONSOLE_LINE_BUFF_CAP];
-		size_t count;
-		Color color;
+    size_t count;
+    Color color;
 };
 
 struct Console_lines {
@@ -520,6 +520,12 @@ struct Console {
     size_t prompt_line_id;
 };
 
+typedef struct {
+    int *items;
+    size_t count;
+    size_t capacity;
+} Ids; // @darr
+
 Console make_console(int flags, Font font, int font_size);
 void add_line_to_console_simple(Console *console, char *line, Color color, bool hist);
 void add_line_to_console(Console *console, char *buff, size_t buff_size, Color color, bool histt);
@@ -531,11 +537,13 @@ Console_line *get_or_create_console_line(Console *console, size_t line);
 void clear_console_line(Console_line *cl);
 void clear_current_console_line(Console *console);
 char *get_current_console_line_buff(Console *console);
+const char *get_current_console_line_without_first_word(Console *console);
 String_array get_current_console_args(Console *console);
 bool input_to_console(Console *console, char *ignore_characters, size_t ignore_characters_count);
 float get_cursor_offset(Console *console, int font_size);
 void draw_console(Console *console, Rectangle rect, Vector2 pad, Color fill_color, Color border_color, float alpha);
 void console_prompt(Console *console, const char *prompt, String_array *expected_prompt_values);
+Ids match_command(const char *command, const char **commands, size_t commands_count);
 
 // NOTE: Macros
 #define log_info_console(console, fmt, ...) do {\
@@ -2426,12 +2434,12 @@ void add_character_to_console_line(Console *console, char ch, size_t line) {
 }
 
 Console_line *get_console_line(Console *console, size_t line) {
-		if (line >= console->lines.count) {
-				log_error("Outofbounds: %zu is out of bounds of lines.count (%zu)", line, console->lines.count);
-				return NULL;
-		}
+    if (line >= console->lines.count) {
+        log_error("Outofbounds: %zu is out of bounds of lines.count (%zu)", line, console->lines.count);
+        return NULL;
+    }
 
-		return &console->lines.items[line];
+    return &console->lines.items[line];
 }
 
 Console_line *get_console_history(Console *console, size_t line) {
@@ -2452,11 +2460,11 @@ Console_line *get_or_create_console_line(Console *console, size_t line) {
 }
 
 void clear_console_line(Console_line *cl) {
-		if (cl == NULL) {
-				log_warning("Console line is NULL!!");
-				return;
-		}
-		memset(cl->buff, 0, CONSOLE_LINE_BUFF_CAP);
+    if (cl == NULL) {
+        log_warning("Console line is NULL!!");
+        return;
+    }
+    memset(cl->buff, 0, CONSOLE_LINE_BUFF_CAP);
 }
 
 void clear_current_console_line(Console *console) {
@@ -2474,6 +2482,18 @@ char *get_current_console_line_buff(Console *console) {
 		}
 
 		return console->lines.items[console->line].buff;
+}
+
+const char *get_current_console_line_without_first_word(Console *console) {
+    const char *buff = get_current_console_line_buff(console);
+
+    while (!isspace(*buff) && *buff != '\0') { buff++; }
+
+    if (*buff == '\0') return NULL;
+
+    while (isspace(*buff)) { buff++; }
+
+    return buff;
 }
 
 String_array get_current_console_args(Console *console) {
@@ -2723,6 +2743,34 @@ void console_prompt(Console *console, const char *prompt, String_array *expected
 				}
 		}
 }
+
+Ids match_command(const char *command, const char **commands, size_t commands_count) {
+    Ids matched_command_ids = {0};
+    size_t command_len = strlen(command);
+    char command_lower[1024] = {0};
+
+    //
+    size_t max = sizeof(command_lower) - 1;
+    size_t copy_len = command_len > max ? max : command_len;
+    for (size_t i=0;i<copy_len;++i) command_lower[i]=tolower((unsigned char)command[i]);
+    command_lower[copy_len]=0;
+    if (command_len > max) command_len = copy_len; // or treat as truncated
+    //
+
+    for (int i = 0; i < commands_count; ++i) {
+        const char *c = commands[i];
+        size_t c_len = strlen(c);
+        if (str_starts_with(c, command_lower)) {
+            if ((command_len > c_len && command_lower[c_len] == ' ')
+              || command_len <= c_len) {
+                darr_append(matched_command_ids, i);
+            }
+        }
+    }
+
+    return matched_command_ids;
+}
+
 
 // Timer and Alarm
 void update_timer(Timer *t, float dt) {
